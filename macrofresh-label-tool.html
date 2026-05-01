@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MacroFresh · Label Sheet Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+  :root {
+    --green: #5cb135;
+    --green-dark: #4a9228;
+    --black: #111;
+    --white: #fafaf8;
+    --muted: #888;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--black);
+    color: var(--white);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .logo {
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .logo span { color: var(--green); }
+
+  .sub {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 48px;
+  }
+
+  .card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 6px;
+  }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 32px;
+  }
+
+  .drop-zone {
+    border: 2px dashed #333;
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    background: #111;
+    margin-bottom: 24px;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--green);
+    background: #161616;
+  }
+
+  .drop-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+  .drop-main { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .drop-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+  .drop-btn {
+    display: inline-flex;
+    padding: 10px 22px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .drop-btn:hover { background: var(--green-dark); }
+
+  #file-input { display: none; }
+
+  .specs {
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+  }
+
+  .specs-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 10px;
+  }
+
+  .specs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .spec-item { font-size: 11px; color: #bbb; }
+  .spec-item strong { color: var(--white); display: block; font-size: 12px; }
+
+  .progress-wrap { display: none; margin-bottom: 24px; }
+  .progress-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .progress-bar-bg { background: #222; border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-bar { background: var(--green); height: 6px; border-radius: 4px; transition: width .2s; width: 0%; }
+  .progress-status { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .result { display: none; text-align: center; }
+
+  .result-icon { font-size: 48px; margin-bottom: 12px; display: block; }
+  .result-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .result-sub { font-size: 12px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .2s;
+    margin-bottom: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+  .btn-download:hover { background: var(--green-dark); }
+
+  .btn-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid #333;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-reset:hover { border-color: #555; color: var(--white); }
+
+  .error-msg {
+    background: #2a0a0a;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #ef4444;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .file-info {
+    display: none;
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: #bbb;
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  .file-info-icon { font-size: 20px; }
+  .file-info-name { font-weight: 600; color: var(--white); }
+  .file-info-pages { color: var(--muted); }
+
+  .process-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .2s;
+    display: none;
+  }
+  .process-btn:hover { background: var(--green-dark); }
+  .process-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div class="logo">MACRO<span>FRESH</span></div>
+<div class="sub">Label Sheet Builder · SL8046</div>
+
+<div class="card">
+  <div class="card-title">4-Up Label Sheet Generator</div>
+  <div class="card-desc">
+    Drop your exported Order Printer PDF below. This tool will automatically arrange every order 4-per-page to match your <strong>SL8046 label sheets</strong> — ready to print on your Epson EcoTank.
+  </div>
+
+  <div class="specs">
+    <div class="specs-title">SL8046 Sheet Specifications</div>
+    <div class="specs-grid">
+      <div class="spec-item"><strong>8.5" × 14"</strong>Legal sheet size</div>
+      <div class="spec-item"><strong>4" × 6"</strong>Label size</div>
+      <div class="spec-item"><strong>4 labels</strong>Per sheet (2×2)</div>
+      <div class="spec-item"><strong>1" / 0.25"</strong>Top-bottom / left-right margins</div>
+    </div>
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <span class="drop-icon">📄</span>
+    <div class="drop-main">Drop your Order Printer PDF here</div>
+    <div class="drop-sub">or click to browse</div>
+    <button class="drop-btn" onclick="event.stopPropagation(); document.getElementById('file-input').click()">Choose PDF</button>
+    <input type="file" id="file-input" accept=".pdf" onchange="handleFile(this.files[0])">
+  </div>
+
+  <div class="file-info" id="file-info">
+    <span class="file-info-icon">📋</span>
+    <div>
+      <div class="file-info-name" id="file-name"></div>
+      <div class="file-info-pages" id="file-pages"></div>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-label">Building label sheets...</div>
+    <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="progress-status" id="progress-status">Loading PDF...</div>
+  </div>
+
+  <button class="process-btn" id="process-btn" onclick="processPDF()">
+    ⚡ Build Label Sheets
+  </button>
+
+  <div class="result" id="result">
+    <span class="result-icon">✅</span>
+    <div class="result-title">Label Sheets Ready!</div>
+    <div class="result-sub" id="result-sub"></div>
+    <button class="btn-download" id="btn-download">⬇ Download Print-Ready PDF</button>
+    <button class="btn-reset" onclick="reset()">← Process Another File</button>
+  </div>
+</div>
+
+<script>
+  // SL8046 specs in points (1 inch = 72 pts)
+  const SHEET_W     = 8.5  * 72;  // 612
+  const SHEET_H     = 14   * 72;  // 1008
+  const LABEL_W     = 4    * 72;  // 288
+  const LABEL_H     = 6    * 72;  // 432
+  const MARGIN_TOP  = 1    * 72;  // 72
+  const MARGIN_LEFT = 0.25 * 72;  // 18
+
+  // Grid positions (PDF coords: origin bottom-left)
+  // 2 columns, 2 rows
+  const POSITIONS = [
+    { col: 0, row: 0 }, // top-left
+    { col: 1, row: 0 }, // top-right
+    { col: 0, row: 1 }, // bottom-left
+    { col: 1, row: 1 }, // bottom-right
+  ];
+
+  let loadedFile = null;
+  let outputBytes = null;
+
+  // Drag & drop
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.toLowerCase().endsWith('.pdf')) handleFile(f);
+    else showError('Please drop a PDF file.');
+  });
+
+  function handleFile(file) {
+    if (!file) return;
+    loadedFile = file;
+    hideError();
+
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-pages').textContent = 'Reading file...';
+
+    const fi = document.getElementById('file-info');
+    fi.style.display = 'flex';
+
+    // Quick page count
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const pdf = await PDFLib.PDFDocument.load(e.target.result);
+        const count = pdf.getPageCount();
+        document.getElementById('file-pages').textContent =
+          `${count} order${count !== 1 ? 's' : ''} · will produce ${Math.ceil(count / 4)} label sheet${Math.ceil(count/4) !== 1 ? 's' : ''}`;
+        document.getElementById('process-btn').style.display = 'block';
+      } catch(err) {
+        showError('Could not read PDF. Make sure it\'s a valid PDF file.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  async function processPDF() {
+    if (!loadedFile) return;
+    hideError();
+
+    // Switch UI to progress
+    document.getElementById('process-btn').style.display = 'none';
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('drop-zone').style.display = 'none';
+    const pw = document.getElementById('progress-wrap');
+    pw.style.display = 'block';
+
+    try {
+      setProgress(5, 'Loading your PDF...');
+
+      const arrayBuffer = await loadedFile.arrayBuffer();
+      const srcDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+      const totalPages = srcDoc.getPageCount();
+
+      setProgress(15, `Found ${totalPages} orders. Building sheets...`);
+
+      // Create output document
+      const outDoc = await PDFLib.PDFDocument.create();
+      const totalSheets = Math.ceil(totalPages / 4);
+
+      for (let sheet = 0; sheet < totalSheets; sheet++) {
+        // Add a legal-size page
+        const page = outDoc.addPage([SHEET_W, SHEET_H]);
+
+        for (let slot = 0; slot < 4; slot++) {
+          const srcPageIdx = sheet * 4 + slot;
+          if (srcPageIdx >= totalPages) break;
+
+          // Embed the source page
+          const [embedded] = await outDoc.embedPages([srcDoc.getPage(srcPageIdx)]);
+
+          const pos = POSITIONS[slot];
+          const x = MARGIN_LEFT + pos.col * LABEL_W;
+          // PDF y=0 is bottom; row 0 = top of sheet
+          const y = SHEET_H - MARGIN_TOP - (pos.row + 1) * LABEL_H;
+
+          // Draw the embedded page scaled to fit label
+          const srcPage = srcDoc.getPage(srcPageIdx);
+          const srcW = srcPage.getWidth();
+          const srcH = srcPage.getHeight();
+          const scaleX = LABEL_W / srcW;
+          const scaleY = LABEL_H / srcH;
+          const scale = Math.min(scaleX, scaleY);
+
+          // Center within label slot if aspect differs
+          const drawW = srcW * scale;
+          const drawH = srcH * scale;
+          const offsetX = (LABEL_W - drawW) / 2;
+          const offsetY = (LABEL_H - drawH) / 2;
+
+          page.drawPage(embedded, {
+            x: x + offsetX,
+            y: y + offsetY,
+            width: drawW,
+            height: drawH,
+          });
+        }
+
+        const pct = 15 + Math.round(((sheet + 1) / totalSheets) * 80);
+        setProgress(pct, `Sheet ${sheet + 1} of ${totalSheets} complete...`);
+      }
+
+      setProgress(97, 'Finalizing PDF...');
+      outputBytes = await outDoc.save();
+      setProgress(100, 'Done!');
+
+      // Show result
+      setTimeout(() => {
+        pw.style.display = 'none';
+        const result = document.getElementById('result');
+        result.style.display = 'block';
+        document.getElementById('result-sub').innerHTML =
+          `<strong>${totalPages} orders</strong> arranged across <strong>${totalSheets} label sheet${totalSheets !== 1 ? 's' : ''}</strong>.<br>Print on your SL8046 paper at 100% scale — no fit to page.`;
+
+        document.getElementById('btn-download').onclick = () => {
+          const blob = new Blob([outputBytes], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `macrofresh-labels-${new Date().toLocaleDateString('en-US').replace(/\//g,'-')}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+      }, 500);
+
+    } catch(err) {
+      document.getElementById('progress-wrap').style.display = 'none';
+      document.getElementById('drop-zone').style.display = 'block';
+      showError('Something went wrong: ' + err.message);
+      console.error(err);
+    }
+  }
+
+  function setProgress(pct, status) {
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('progress-status').textContent = status;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('error-msg').style.display = 'none';
+  }
+
+  function reset() {
+    loadedFile = null;
+    outputBytes = null;
+    document.getElementById('result').style.display = 'none';
+    document.getElementById('drop-zone').style.display = 'block';
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('process-btn').style.display = 'none';
+    document.getElementById('progress-wrap').style.display = 'none';
+    document.getElementById('file-input').value = '';
+    hideError();
+  }
+</script>
+</body>
+</html>
